@@ -42,7 +42,7 @@ def start(update: Update, context: CallbackContext) -> int:
     update.message.reply_text(
         'Hi! My name is RVRC Famyshd.'
         'Which pantry did you put your unopened food in?'
-        'Send /cancel to stop the conversation.\n\n',
+        'Send /cancel to stop the sharing.\n\n',
         reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True),
     )
 
@@ -60,7 +60,8 @@ def pantry(update: Update, context: CallbackContext) -> int:
         reply_markup=ReplyKeyboardRemove(),
     )
     update.message.reply_text(
-        'Is the food perishable or non-perishable?',
+        'Is the food perishable or non-perishable?'
+        'Send /cancel to stop the sharing.\n\n',
         reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True),
     )
 
@@ -77,6 +78,7 @@ def perishable(update: Update, context: CallbackContext) -> int:
     )
     update.message.reply_text(
         'Please send me a photo of the food you want to share.'
+        'Send /cancel to stop the sharing.\n\n'
     )
 
     return PHOTO
@@ -118,11 +120,26 @@ def skip_feedback(update: Update, context: CallbackContext) -> int:
     return ConversationHandler.END
 
 
+'''
+def help(update: Update, context: CallbackContext) -> int:
+    update.message.reply_text(
+        'This is a bot to encourage food sharing culture in RVRC.\n'
+        'You can share your unopened food here.\n\n'
+        '/start - Start sharing food.\n'
+        '/help - View instructions.'
+    )
+
+
+def unknown(update, context):
+    context.bot.send_message(chat_id=update.effective_chat.id, text="Sorry, I didn't understand that command.")
+'''
+
+
 def cancel(update: Update, context: CallbackContext) -> int:
     user = update.message.from_user
     logger.info("User %s canceled the conversation.", user.first_name)
     update.message.reply_text(
-        'Bye! I hope we can talk again some day.', reply_markup=ReplyKeyboardRemove()
+        'Bye! Please share food again some day.', reply_markup=ReplyKeyboardRemove()
     )
 
     return ConversationHandler.END
@@ -151,6 +168,8 @@ def main() -> None:
     )
 
     dispatcher.add_handler(conv_handler)
+    # dispatcher.add_handler(CommandHandler('help', help))
+    # dispatcher.add_handler(MessageHandler(Filters.command, unknown))
 
     # Start the Bot
     updater.start_polling()
