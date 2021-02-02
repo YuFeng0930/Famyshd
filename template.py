@@ -20,48 +20,66 @@ logger = logging.getLogger(__name__)
 GENDER, PHOTO, LOCATION, BIO = range(4)
 
 
-def start(update: Update, context: CallbackContext) -> int:
-    reply_keyboard = [['Boy', 'Girl', 'Other']]
-
+def transaction(update: Update, context: CallbackContext) -> int:
     update.message.reply_text(
-        'Hi! My name is Professor Bot. I will hold a conversation with you. '
-        'Send /cancel to stop talking to me.\n\n'
-        'Are you a boy or a girl?',
-        reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True),
+        'Hi! My name is RVRC Famyshd.'
     )
+    pantry = location()
+    perishable = perishable()
+    photo()
+    
 
     return GENDER
 
 
-def gender(update: Update, context: CallbackContext) -> int:
-    user = update.message.from_user
-    logger.info("Gender of %s: %s", user.first_name, update.message.text)
+def location():
+    reply_keyboard = [['Block D', 'Block E']]
+
     update.message.reply_text(
-        'I see! Please send me a photo of yourself, '
-        'so I know what you look like, or send /skip if you don\'t want to.',
+        'Which pantry did you put your unopened food in?'
+        'Send /cancel to stop the conversation.\n\n',
+        reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True),
+    )
+    user = update.message.from_user
+    pantry = update.message.text
+    logger.info("%s initiate the food sharing at %s pantry.", user.first_name, pantry)
+    return pantry
+
+
+def perishable():
+    reply_keyboard = [['Perishable', 'Non-perishable']]
+
+    update.message.reply_text(
+        'Is the food perishable or non-perishable?',
+        reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True),
+    )
+    user = update.message.from_user
+    perishable = update.message.text
+    logger.info("The food shared is %s.", perishable)
+    return perishable
+
+
+def photo():
+    update.message.reply_text(
+        'I see! Please send me a photo of the food you want to share.',
         reply_markup=ReplyKeyboardRemove(),
     )
+    user = update.message.from_user
+    photo_file = update.message.photo[-1].get_file()
+    photo_file.download('user_photo.jpg')
+    logger.info("Photo of %s: %s", user.first_name, 'user_photo.jpg')
+    update.message.reply_text(
+        'Gorgeous! Thank you!'
+    )
 
-    return PHOTO
-
-
-def photo(update: Update, context: CallbackContext) -> int:
+'''
+def photo():
     user = update.message.from_user
     photo_file = update.message.photo[-1].get_file()
     photo_file.download('user_photo.jpg')
     logger.info("Photo of %s: %s", user.first_name, 'user_photo.jpg')
     update.message.reply_text(
         'Gorgeous! Now, send me your location please, ' 'or send /skip if you don\'t want to.'
-    )
-
-    return LOCATION
-
-
-def skip_photo(update: Update, context: CallbackContext) -> int:
-    user = update.message.from_user
-    logger.info("User %s did not send a photo.", user.first_name)
-    update.message.reply_text(
-        'I bet you look great! Now, send me your location please, ' 'or send /skip.'
     )
 
     return LOCATION
@@ -96,16 +114,15 @@ def bio(update: Update, context: CallbackContext) -> int:
     update.message.reply_text('Thank you! I hope we can talk again some day.')
 
     return ConversationHandler.END
+'''
 
 
 def cancel(update: Update, context: CallbackContext) -> int:
     user = update.message.from_user
     logger.info("User %s canceled the conversation.", user.first_name)
     update.message.reply_text(
-        'Bye! I hope we can talk again some day.', reply_markup=ReplyKeyboardRemove()
+        'Bye! Please share food again some day.', reply_markup=ReplyKeyboardRemove()
     )
-
-    return ConversationHandler.END
 
 
 def main() -> None:
@@ -116,21 +133,8 @@ def main() -> None:
     dispatcher = updater.dispatcher
 
     # Add conversation handler with the states GENDER, PHOTO, LOCATION and BIO
-    conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', start)],
-        states={
-            GENDER: [MessageHandler(Filters.regex('^(Boy|Girl|Other)$'), gender)],
-            PHOTO: [MessageHandler(Filters.photo, photo), CommandHandler('skip', skip_photo)],
-            LOCATION: [
-                MessageHandler(Filters.location, location),
-                CommandHandler('skip', skip_location),
-            ],
-            BIO: [MessageHandler(Filters.text & ~Filters.command, bio)],
-        },
-        fallbacks=[CommandHandler('cancel', cancel)],
-    )
-
-    dispatcher.add_handler(conv_handler)
+    dispatcher.add_handler(CommandHandler("start", transaction))
+    dispatcher.add_handler(CommandHandler("cancel", cancel))
 
     # Start the Bot
     updater.start_polling()
