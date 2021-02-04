@@ -39,7 +39,6 @@ PANTRY_START, PERISHABLE_START, PHOTO_START, PANTRY_UPDATE, PHOTO_UPDATE, FEEDBA
 
 def start(update: Update, context: CallbackContext) -> int:
     reply_keyboard = [['Block D', 'Block E']]
-
     update.message.reply_text(
         'Hi! My name is RVRC Famyshd.'
         'Which pantry did you put your unopened food in? '
@@ -91,6 +90,11 @@ def photo_start(update: Update, context: CallbackContext) -> int:
     time = datetime.datetime.now()
     photo_name = 'share-' + str(time) + '.jpg'
     photo_file.download(photo_name)
+    update.message.reply_text(
+        'A moment please...'
+    )
+    context.bot.send_photo(chat_id=926113388, photo=open(photo_name, 'rb')) # send to YuFeng personal chat
+    context.bot.send_photo(chat_id=-1001157665580, photo=open(photo_name, 'rb')) # send to Try Channel
     logger.info("Photo of %s: %s", user.first_name, photo_name)
     update.message.reply_text(
         'Gorgeous! Lastly, do you have anything to tell us? '
@@ -158,6 +162,11 @@ def photo_update(update: Update, context: CallbackContext) -> int:
     time = datetime.datetime.now()
     photo_name = 'update-' + str(time) + '.jpg'
     photo_file.download(photo_name)
+    update.message.reply_text(
+        'A moment please...'
+    )
+    context.bot.send_photo(chat_id=926113388, photo=open(photo_name, 'rb')) # send to YuFeng personal chat
+    context.bot.send_photo(chat_id=-1001157665580, photo=open(photo_name, 'rb')) # send to Try Channel
     logger.info("Photo of %s: %s", user.first_name, photo_name)
     update.message.reply_text(
         'Gorgeous! Lastly, do you have anything to tell us? '
