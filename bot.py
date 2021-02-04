@@ -15,6 +15,7 @@ bot.
 """
 
 import logging
+import datetime
 
 from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Update
 from telegram.ext import (
@@ -87,8 +88,10 @@ def perishable_start(update: Update, context: CallbackContext) -> int:
 def photo_start(update: Update, context: CallbackContext) -> int:
     user = update.message.from_user
     photo_file = update.message.photo[-1].get_file()
-    photo_file.download('user_photo.jpg')
-    logger.info("Photo of %s: %s", user.first_name, 'user_photo.jpg')
+    time = datetime.datetime.now()
+    photo_name = 'share-' + str(time) + '.jpg'
+    photo_file.download(photo_name)
+    logger.info("Photo of %s: %s", user.first_name, photo_name)
     update.message.reply_text(
         'Gorgeous! Lastly, do you have anything to tell us? '
         'or send /skip if you don\'t have anything to say.',
@@ -152,8 +155,10 @@ def pantry_update(update: Update, context: CallbackContext) -> int:
 def photo_update(update: Update, context: CallbackContext) -> int:
     user = update.message.from_user
     photo_file = update.message.photo[-1].get_file()
-    photo_file.download('user_photo.jpg')
-    logger.info("Photo of %s: %s", user.first_name, 'user_photo.jpg')
+    time = datetime.datetime.now()
+    photo_name = 'update-' + str(time) + '.jpg'
+    photo_file.download(photo_name)
+    logger.info("Photo of %s: %s", user.first_name, photo_name)
     update.message.reply_text(
         'Gorgeous! Lastly, do you have anything to tell us? '
         'or send /skip if you don\'t have anything to say.',
@@ -202,7 +207,6 @@ def main() -> None:
     # Get the dispatcher to register handlers
     dispatcher = updater.dispatcher
 
-    # Add conversation handler with the states GENDER, PHOTO, LOCATION and BIO
     conv_handler_start = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
         states={
