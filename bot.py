@@ -27,10 +27,16 @@ from telegram.ext import (
     CallbackContext,
 )
 
+
+import os
+
 # Enable logging
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
 )
+
+PORT = int(os.environ.get('PORT', 5000))
+TOKEN = '1584429947:AAFbqqLDtWIHu_AEzVVB7c3tTAga7Gnor4c'
 
 logger = logging.getLogger(__name__)
 
@@ -259,7 +265,10 @@ def main() -> None:
     dispatcher.add_handler(conv_handler_update)
 
     # Start the Bot
-    updater.start_polling()
+    updater.start_webhook(listen="0.0.0.0",
+                        port=int(PORT),
+                        url_path=TOKEN)
+    updater.bot.setWebhook('https://blooming-everglades-53145.herokuapp.com/' + TOKEN)
 
     # Run the bot until you press Ctrl-C or the process receives SIGINT,
     # SIGTERM or SIGABRT. This should be used most of the time, since
