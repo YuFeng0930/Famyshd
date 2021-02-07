@@ -53,8 +53,9 @@ def pantry_start(update: Update, context: CallbackContext) -> int:
     reply_keyboard = [['Perishable', 'Non-perishable']]
 
     user = update.message.from_user
-    pantry = update.message.text
-    logger.info("%s initiate the food sharing at %s pantry.", user.first_name, pantry)
+    global pantry_start
+    pantry_start = update.message.text
+    logger.info("%s initiate the food sharing at %s pantry.", user.first_name, pantry_start)
     update.message.reply_text(
         'Noted.',
         reply_markup=ReplyKeyboardRemove(),
@@ -70,8 +71,9 @@ def pantry_start(update: Update, context: CallbackContext) -> int:
 
 def perishable_start(update: Update, context: CallbackContext) -> int:
     user = update.message.from_user
-    perishable = update.message.text
-    logger.info("The food shared is %s.", perishable)
+    global perishable_start
+    perishable_start = update.message.text
+    logger.info("The food shared is %s.", perishable_start)
     update.message.reply_text(
         'Noted.',
         reply_markup=ReplyKeyboardRemove(),
@@ -88,13 +90,19 @@ def photo_start(update: Update, context: CallbackContext) -> int:
     user = update.message.from_user
     photo_file = update.message.photo[-1].get_file()
     time = datetime.datetime.now()
+    time_clear = datetime.datetime.now() + datetime.timedelta(hours=1)
     photo_name = 'share-' + str(time) + '.jpg'
     photo_file.download(photo_name)
     update.message.reply_text(
         'A moment please...'
     )
+    message = 'Location: ' + str(pantry_start) + ' pantry\n' + 'Food type: ' + str(perishable_start) + ' food\n'
+    if perishable_start == 'Perishable':
+        message += '(The food will be clear up at %s:%s)' % (time_clear.hour, time_clear.minute)
     context.bot.send_photo(chat_id=926113388, photo=open(photo_name, 'rb')) # send to YuFeng personal chat
+    context.bot.send_message(chat_id=926113388, text=message)
     context.bot.send_photo(chat_id=-1001157665580, photo=open(photo_name, 'rb')) # send to Try Channel
+    context.bot.send_message(chat_id=-1001157665580, text=message)
     logger.info("Photo of %s: %s", user.first_name, photo_name)
     update.message.reply_text(
         'Gorgeous! Lastly, do you have anything to tell us? '
@@ -142,8 +150,9 @@ def status(update: Update, context: CallbackContext) -> int:
 
 def pantry_update(update: Update, context: CallbackContext) -> int:
     user = update.message.from_user
-    pantry = update.message.text
-    logger.info("%s update the food sharing at %s pantry.", user.first_name, pantry)
+    global pantry_update
+    pantry_update = update.message.text
+    logger.info("%s update the food sharing at %s pantry.", user.first_name, pantry_update)
     update.message.reply_text(
         'Noted.',
         reply_markup=ReplyKeyboardRemove(),
@@ -165,8 +174,11 @@ def photo_update(update: Update, context: CallbackContext) -> int:
     update.message.reply_text(
         'A moment please...'
     )
+    message = 'Location: ' + str(pantry_update) + ' pantry\n'
     context.bot.send_photo(chat_id=926113388, photo=open(photo_name, 'rb')) # send to YuFeng personal chat
+    context.bot.send_message(chat_id=926113388, message=message)
     context.bot.send_photo(chat_id=-1001157665580, photo=open(photo_name, 'rb')) # send to Try Channel
+    context.bot.send_message(chat_id=-1001157665580, text=message)
     logger.info("Photo of %s: %s", user.first_name, photo_name)
     update.message.reply_text(
         'Gorgeous! Lastly, do you have anything to tell us? '
