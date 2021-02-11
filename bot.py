@@ -36,7 +36,7 @@ logging.basicConfig(
 )
 
 PORT = int(os.environ.get('PORT', 5000))
-TOKEN = '1584429947:AAFbqqLDtWIHu_AEzVVB7c3tTAga7Gnor4c'
+TOKEN = '1504384034:AAGrRYIBUQ8bb0SqQgKZP0ZsXQA15rxG0gk'
 
 logger = logging.getLogger(__name__)
 
@@ -46,9 +46,9 @@ PANTRY_START, PERISHABLE_START, PHOTO_START, PANTRY_UPDATE, PHOTO_UPDATE, FEEDBA
 def start(update: Update, context: CallbackContext) -> int:
     reply_keyboard = [['Block D', 'Block E']]
     update.message.reply_text(
-        'Hi! My name is RVRC Famyshd.'
-        'Which pantry did you put your unopened food in? '
-        'Send /cancel to stop the sharing.\n\n',
+        'Hello! Welcome to Famyshd, RVRC’s very own food sharing service. '
+        'Which pantry did you put your leftover food in? '
+        'Send /cancel to stop sharing.\n\n',
         reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True),
     )
 
@@ -63,12 +63,12 @@ def pantry_start(update: Update, context: CallbackContext) -> int:
     pantry_start = update.message.text
     logger.info("%s initiate the food sharing at %s pantry.", user.first_name, pantry_start)
     update.message.reply_text(
-        'Noted.',
+        'Got it.\n\n',
         reply_markup=ReplyKeyboardRemove(),
     )
     update.message.reply_text(
         'Is the food perishable or non-perishable? '
-        'Send /cancel to stop the sharing.\n\n',
+        'Send /cancel to stop sharing.\n\n',
         reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True),
     )
 
@@ -81,12 +81,12 @@ def perishable_start(update: Update, context: CallbackContext) -> int:
     perishable_start = update.message.text
     logger.info("The food shared is %s.", perishable_start)
     update.message.reply_text(
-        'Noted.',
+        'Got it.\n\n',
         reply_markup=ReplyKeyboardRemove(),
     )
     update.message.reply_text(
         'Please send me a photo of the food you want to share. '
-        'Send /cancel to stop the sharing.\n\n'
+        'Send /cancel to stop sharing.\n\n'
     )
 
     return PHOTO_START
@@ -96,23 +96,20 @@ def photo_start(update: Update, context: CallbackContext) -> int:
     user = update.message.from_user
     photo_file = update.message.photo[-1].get_file()
     time = datetime.datetime.now()
+    global time_clear
+    global photo_name_start
     time_clear = datetime.datetime.now() + datetime.timedelta(hours=1)
-    photo_name = 'share-' + str(time) + '.jpg'
-    photo_file.download(photo_name)
+    photo_name_start = 'share-' + str(time) + '.jpg'
+    photo_file.download(photo_name_start)
     update.message.reply_text(
-        'A moment please...'
+        'A moment please...\n\n'
     )
-    message = 'Location: ' + str(pantry_start) + ' pantry\n' + 'Food type: ' + str(perishable_start) + ' food\n'
-    if perishable_start == 'Perishable':
-        message += '(The food will be clear up at %s:%s)' % (time_clear.hour, time_clear.minute)
-    context.bot.send_photo(chat_id=926113388, photo=open(photo_name, 'rb')) # send to YuFeng personal chat
-    context.bot.send_message(chat_id=926113388, text=message)
-    context.bot.send_photo(chat_id=-1001157665580, photo=open(photo_name, 'rb')) # send to Try Channel
-    context.bot.send_message(chat_id=-1001157665580, text=message)
-    logger.info("Photo of %s: %s", user.first_name, photo_name)
+    
+    logger.info("Photo of %s: %s", user.first_name, photo_name_start)
     update.message.reply_text(
-        'Gorgeous! Lastly, do you have anything to tell us? '
-        'or send /skip if you don\'t have anything to say.',
+        'Great! Lastly, do you have any additional comments about the food '
+        '(i.e non-halal, freshness etc.) or the station? '
+        'Send /skip if you don\'t have anything to say.\n\n',
     )
 
     return FEEDBACK_START
@@ -121,11 +118,22 @@ def photo_start(update: Update, context: CallbackContext) -> int:
 def feedback_start(update: Update, context: CallbackContext) -> int:
     user = update.message.from_user
     feedback = update.message.text
+
+    message = 'Location: ' + str(pantry_start) + ' pantry\n' + 'Food type: ' + str(perishable_start) + ' food\n'
+    if perishable_start == 'Perishable':
+        message += '(The food will be clear up by %s:%s)\n' % (time_clear.hour, time_clear.minute)
+    message += '(Remarks: %s)' % (feedback)
+    # context.bot.send_photo(chat_id=926113388, photo=open(photo_name_start, 'rb')) # send to YuFeng personal chat
+    # context.bot.send_message(chat_id=926113388, text=message)
+    context.bot.send_photo(chat_id=-1001477409473, photo=open(photo_name_start, 'rb')) # send to Try Channel
+    context.bot.send_message(chat_id=-1001477409473, text=message)
+
     logger.info(
         "%s\'s feedback: %s", user.first_name, feedback
     )
     update.message.reply_text(
-        'Thank you very much for your feedback! Please share food again some day.'
+        'Thank you for sharing some of your food! '
+        'I’m sure someone would appreciate it! Cheers!\n\n'
     )
 
     return ConversationHandler.END
@@ -133,9 +141,19 @@ def feedback_start(update: Update, context: CallbackContext) -> int:
 
 def skip_feedback_start(update: Update, context: CallbackContext) -> int:
     user = update.message.from_user
+
+    message = 'Location: ' + str(pantry_start) + ' pantry\n' + 'Food type: ' + str(perishable_start) + ' food\n'
+    if perishable_start == 'Perishable':
+        message += '(The food will be clear up by %s:%s)' % (time_clear.hour, time_clear.minute)
+    # context.bot.send_photo(chat_id=926113388, photo=open(photo_name_start, 'rb')) # send to YuFeng personal chat
+    # context.bot.send_message(chat_id=926113388, text=message)
+    context.bot.send_photo(chat_id=-1001477409473, photo=open(photo_name_start, 'rb')) # send to Try Channel
+    context.bot.send_message(chat_id=-1001477409473, text=message)
+
     logger.info("User %s did not send a feedback.", user.first_name)
     update.message.reply_text(
-        'Thank you. Please share food again some day.'
+        'Thank you for sharing some of your food! '
+        'I’m sure someone would appreciate it! Cheers!\n\n'
     )
 
     return ConversationHandler.END
@@ -145,9 +163,9 @@ def status(update: Update, context: CallbackContext) -> int:
     reply_keyboard = [['Block D', 'Block E']]
 
     update.message.reply_text(
-        'Hi! My name is RVRC Famyshd.'
+        'Hello! Welcome to Famyshd, RVRC’s very own food sharing service. '
         'Which pantry did you take the food from? '
-        'Send /cancel to stop the updating.\n\n',
+        'Send /cancel to stop the update.\n\n',
         reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True),
     )
 
@@ -160,12 +178,12 @@ def pantry_update(update: Update, context: CallbackContext) -> int:
     pantry_update = update.message.text
     logger.info("%s update the food sharing at %s pantry.", user.first_name, pantry_update)
     update.message.reply_text(
-        'Noted.',
+        'Got it.\n\n',
         reply_markup=ReplyKeyboardRemove(),
     )
     update.message.reply_text(
-        'Please send me a photo of the food after you take. '
-        'Send /cancel to stop the sharing.\n\n'
+        'Please send me a photo of the food after you have taken it. '
+        'Send /cancel to stop the update.\n\n'
     )
 
     return PHOTO_UPDATE
@@ -178,17 +196,17 @@ def photo_update(update: Update, context: CallbackContext) -> int:
     photo_name = 'update-' + str(time) + '.jpg'
     photo_file.download(photo_name)
     update.message.reply_text(
-        'A moment please...'
+        'A moment please...\n\n'
     )
     message = 'Location: ' + str(pantry_update) + ' pantry\n'
-    context.bot.send_photo(chat_id=926113388, photo=open(photo_name, 'rb')) # send to YuFeng personal chat
-    context.bot.send_message(chat_id=926113388, message=message)
-    context.bot.send_photo(chat_id=-1001157665580, photo=open(photo_name, 'rb')) # send to Try Channel
-    context.bot.send_message(chat_id=-1001157665580, text=message)
+    # context.bot.send_photo(chat_id=926113388, photo=open(photo_name, 'rb')) # send to YuFeng personal chat
+    # context.bot.send_message(chat_id=926113388, message=message)
+    context.bot.send_photo(chat_id=-1001477409473, photo=open(photo_name, 'rb')) # send to Try Channel
+    context.bot.send_message(chat_id=-1001477409473, text=message)
     logger.info("Photo of %s: %s", user.first_name, photo_name)
     update.message.reply_text(
-        'Gorgeous! Lastly, do you have anything to tell us? '
-        'or send /skip if you don\'t have anything to say.',
+        'Great! Lastly, do you have anything to tell us? '
+        'Send /skip if you don\'t have anything to say.\n\n',
     )
 
     return FEEDBACK_UPDATE
@@ -201,7 +219,7 @@ def feedback_update(update: Update, context: CallbackContext) -> int:
         "%s\'s feedback: %s", user.first_name, feedback
     )
     update.message.reply_text(
-        'Thank you very much for your feedback! Please also share food some day.'
+        'Thank you and hope you enjoy your food! Cheers!\n\n'
     )
 
     return ConversationHandler.END
@@ -211,7 +229,7 @@ def skip_feedback_update(update: Update, context: CallbackContext) -> int:
     user = update.message.from_user
     logger.info("User %s did not send a feedback.", user.first_name)
     update.message.reply_text(
-        'Thank you. Please also share food some day.'
+        'Thank you and hope you enjoy your food! Cheers!\n\n'
     )
 
     return ConversationHandler.END
@@ -229,7 +247,7 @@ def cancel(update: Update, context: CallbackContext) -> int:
 
 def main() -> None:
     # Create the Updater and pass it your bot's token.
-    updater = Updater('1584429947:AAFbqqLDtWIHu_AEzVVB7c3tTAga7Gnor4c')
+    updater = Updater('1504384034:AAGrRYIBUQ8bb0SqQgKZP0ZsXQA15rxG0gk')
 
     # Get the dispatcher to register handlers
     dispatcher = updater.dispatcher
@@ -264,11 +282,12 @@ def main() -> None:
     dispatcher.add_handler(conv_handler_start)
     dispatcher.add_handler(conv_handler_update)
 
-    # Start the Bot
+    updater.start_polling()
+    '''# Start the Bot
     updater.start_webhook(listen="0.0.0.0",
                         port=int(PORT),
                         url_path=TOKEN)
-    updater.bot.setWebhook('https://blooming-everglades-53145.herokuapp.com/' + TOKEN)
+    updater.bot.setWebhook('https://blooming-everglades-53145.herokuapp.com/' + TOKEN)'''
 
     # Run the bot until you press Ctrl-C or the process receives SIGINT,
     # SIGTERM or SIGABRT. This should be used most of the time, since
