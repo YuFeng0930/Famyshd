@@ -195,7 +195,7 @@ def feedback_start(update: Update, context: CallbackContext) -> int:
         message += 'Box: ' + str(food_info.box) + '\n' 
     message += 'Food type: ' + str(food_info.perishable) + ' food\n'
     if food_info.perishable == 'Perishable':
-        message += '(The food will be clear up by %s:%s)\n' % (food_info.time_clear.hour, food_info.time_clear.minute)
+        message += '(The food will be clear up by %02d:%02d)\n' % (food_info.time_clear.hour, food_info.time_clear.minute)
     message += '(Remarks: %s)\n' % (feedback)
     # context.bot.send_photo(chat_id=926113388, photo=open(photo_name_start, 'rb')) # send to YuFeng personal chat
     # context.bot.send_message(chat_id=926113388, text=message)
@@ -224,7 +224,7 @@ def skip_feedback_start(update: Update, context: CallbackContext) -> int:
         message += 'Box: ' + str(food_info.box) + '\n' 
     message += 'Food type: ' + str(food_info.perishable) + ' food\n'
     if food_info.perishable == 'Perishable':
-        message += '(The food will be clear up by %s:%s)\n' % (food_info.time_clear.hour, food_info.time_clear.minute)
+        message += '(The food will be clear up by %02d:%02d)\n' % (food_info.time_clear.hour, food_info.time_clear.minute)
     # context.bot.send_photo(chat_id=926113388, photo=open(photo_name_start, 'rb')) # send to YuFeng personal chat
     # context.bot.send_message(chat_id=926113388, text=message)
     context.bot.send_photo(chat_id=-1001477409473, photo=open(food_info.photo_name, 'rb')) # send to Try Channel
