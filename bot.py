@@ -39,16 +39,33 @@ PORT = int(os.environ.get('PORT', 5000))
 TOKEN = '1504384034:AAGrRYIBUQ8bb0SqQgKZP0ZsXQA15rxG0gk'
 global storage
 storage = {}
+
 logger = logging.getLogger(__name__)
 
-PANTRY_START, PERISHABLE_START, PHOTO_START, PANTRY_UPDATE, PHOTO_UPDATE, FEEDBACK_START, FEEDBACK_UPDATE = range(7)
+PANTRY_START, PERISHABLE_START, BOX_START, PHOTO_START, FEEDBACK_START, PANTRY_UPDATE, PERISHABLE_UPDATE, BOX_UPDATE, PHOTO_UPDATE, FEEDBACK_UPDATE = range(10)
 
+
+class FoodInfo:
+    def __init__(self, pantry):
+        self.pantry = pantry
+    
+    def put_perishable(self, perishable):
+        self.perishable = perishable
+
+    def put_box(self, box):
+        self.box = box
+
+    def put_time_clear(self, time_clear):
+        self.time_clear = time_clear
+
+    def put_photo_name(self, photo_name):
+        self.photo_name = photo_name
 
 def start(update: Update, context: CallbackContext) -> int:
     reply_keyboard = [['Block D', 'Block E']]
     update.message.reply_text(
         'Hello! Welcome to Famyshd, RVRC’s very own food sharing service. '
-        'Which pantry did you put your leftover food in? '
+        'Which pantry did you put your upopened food in? '
         'Send /cancel to stop sharing.\n\n',
         reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True),
     )
@@ -61,16 +78,16 @@ def pantry_start(update: Update, context: CallbackContext) -> int:
 
     user = update.message.from_user
     chat_id = update.message.chat.id
-    pantry_start = update.message.text
+    pantry = update.message.text
 
-    logger.info("%s initiate the food sharing at %s pantry.", user.first_name, pantry_start)
+    logger.info("%s initiate the food sharing at %s pantry.", user.first_name, pantry)
     update.message.reply_text(
         'Got it.\n\n',
         reply_markup=ReplyKeyboardRemove(),
     )
 
     # Update the storage
-    storage[chat_id] = [pantry_start]
+    storage[chat_id] = FoodInfo(pantry)
 
     update.message.reply_text(
         'Is the food perishable or non-perishable? '
@@ -84,18 +101,51 @@ def pantry_start(update: Update, context: CallbackContext) -> int:
 def perishable_start(update: Update, context: CallbackContext) -> int:
     user = update.message.from_user
     chat_id = update.message.chat.id
-    perishable_start = update.message.text
+    perishable = update.message.text
 
-    logger.info("The food shared is %s.", perishable_start)
+    logger.info("The food shared is %s.", perishable)
     update.message.reply_text(
         'Got it.\n\n',
         reply_markup=ReplyKeyboardRemove(),
     )
 
     # Update the storage
-    temp_storage = storage.get(chat_id)
-    temp_storage.append(perishable_start)
-    storage[chat_id] = temp_storage
+    food_info = storage.get(chat_id)
+    food_info.put_perishable(perishable)
+    storage[chat_id] = food_info
+    pantry = food_info.pantry[-1]
+
+    if (perishable == 'Perishable'):
+        reply_keyboard = [[pantry + '1', pantry + '2', pantry + '3', pantry + '4']]
+        update.message.reply_text(
+            'Which box did you put your upopened food in? '
+            'Send /cancel to stop sharing.\n\n',
+            reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True),
+        )
+        return BOX_START
+    else:
+        update.message.reply_text(
+            'Please send me a photo of the food you want to share. '
+            'Send /cancel to stop sharing.\n\n'
+        )
+        return PHOTO_START
+
+
+def box_start(update: Update, context: CallbackContext) -> int:
+    user = update.message.from_user
+    chat_id = update.message.chat.id
+    box = update.message.text
+
+    logger.info("The food is put in box %s.", box)
+    update.message.reply_text(
+        'Got it.\n\n',
+        reply_markup=ReplyKeyboardRemove(),
+    )
+
+    # Update the storage
+    food_info = storage.get(chat_id)
+    food_info.put_box(box)
+    storage[chat_id] = food_info
 
     update.message.reply_text(
         'Please send me a photo of the food you want to share. '
@@ -111,19 +161,19 @@ def photo_start(update: Update, context: CallbackContext) -> int:
     photo_file = update.message.photo[-1].get_file()
     time = datetime.datetime.now()
     time_clear = datetime.datetime.now() + datetime.timedelta(hours=1)
-    photo_name_start = 'share-' + str(time) + '.jpg'
+    photo_name = 'share-' + str(time) + '.jpg'
     update.message.reply_text(
         'A moment please...\n\n'
     )
 
     # Update the storage
-    temp_storage = storage.get(chat_id)
-    temp_storage.append(photo_name_start)
-    temp_storage.append(time_clear)
-    storage[chat_id] = temp_storage
+    food_info = storage.get(chat_id)
+    food_info.put_photo_name(photo_name)
+    food_info.put_time_clear(time_clear)
+    storage[chat_id] = food_info
 
-    photo_file.download(photo_name_start)
-    logger.info("Photo of %s: %s", user.first_name, photo_name_start)
+    photo_file.download(photo_name)
+    logger.info("Photo of %s: %s", user.first_name, photo_name)
     update.message.reply_text(
         'Great! Lastly, do you have any additional comments about the food '
         '(i.e non-halal, freshness etc.) or the station? '
@@ -138,15 +188,18 @@ def feedback_start(update: Update, context: CallbackContext) -> int:
     chat_id = update.message.chat.id
     feedback = update.message.text
 
-    temp_storage = storage.pop(chat_id)
+    food_info = storage.pop(chat_id)
 
-    message = 'Location: ' + str(temp_storage[0]) + ' pantry\n' + 'Food type: ' + str(temp_storage[1]) + ' food\n'
-    if perishable_start == 'Perishable':
-        message += '(The food will be clear up by %s:%s)\n' % (temp_storage[3].hour, temp_storage[3].minute)
-    message += '(Remarks: %s)' % (feedback)
+    message = 'Location: ' + str(food_info.pantry) + ' pantry\n' 
+    if food_info.perishable == 'Perishable':
+        message += 'Box: ' + str(food_info.box) + '\n' 
+    message += 'Food type: ' + str(food_info.perishable) + ' food\n'
+    if food_info.perishable == 'Perishable':
+        message += '(The food will be clear up by %s:%s)\n' % (food_info.time_clear.hour, food_info.time_clear.minute)
+    message += '(Remarks: %s)\n' % (feedback)
     # context.bot.send_photo(chat_id=926113388, photo=open(photo_name_start, 'rb')) # send to YuFeng personal chat
     # context.bot.send_message(chat_id=926113388, text=message)
-    context.bot.send_photo(chat_id=-1001477409473, photo=open(temp_storage[2], 'rb')) # send to Try Channel
+    context.bot.send_photo(chat_id=-1001477409473, photo=open(food_info.photo_name, 'rb')) # send to Try Channel
     context.bot.send_message(chat_id=-1001477409473, text=message)
 
     logger.info(
@@ -164,14 +217,17 @@ def skip_feedback_start(update: Update, context: CallbackContext) -> int:
     user = update.message.from_user
     chat_id = update.message.chat.id
 
-    temp_storage = storage.pop(chat_id)
+    food_info = storage.pop(chat_id)
 
-    message = 'Location: ' + str(temp_storage[0]) + ' pantry\n' + 'Food type: ' + str(temp_storage[1]) + ' food\n'
-    if perishable_start == 'Perishable':
-        message += '(The food will be clear up by %s:%s)' % (temp_storage[3].hour, temp_storage[3].minute)
+    message = 'Location: ' + str(food_info.pantry) + ' pantry\n' 
+    if food_info.perishable == 'Perishable':
+        message += 'Box: ' + str(food_info.box) + '\n' 
+    message += 'Food type: ' + str(food_info.perishable) + ' food\n'
+    if food_info.perishable == 'Perishable':
+        message += '(The food will be clear up by %s:%s)\n' % (food_info.time_clear.hour, food_info.time_clear.minute)
     # context.bot.send_photo(chat_id=926113388, photo=open(photo_name_start, 'rb')) # send to YuFeng personal chat
     # context.bot.send_message(chat_id=926113388, text=message)
-    context.bot.send_photo(chat_id=-1001477409473, photo=open(temp_storage[2], 'rb')) # send to Try Channel
+    context.bot.send_photo(chat_id=-1001477409473, photo=open(food_info.photo_name, 'rb')) # send to Try Channel
     context.bot.send_message(chat_id=-1001477409473, text=message)
 
     logger.info("User %s did not send a feedback.", user.first_name)
@@ -197,18 +253,78 @@ def status(update: Update, context: CallbackContext) -> int:
 
 
 def pantry_update(update: Update, context: CallbackContext) -> int:
+    reply_keyboard = [['Perishable', 'Non-perishable']]
+
     user = update.message.from_user
     chat_id = update.message.chat.id
-    pantry_update = update.message.text
+    pantry = update.message.text
 
-    logger.info("%s update the food sharing at %s pantry.", user.first_name, pantry_update)
+    logger.info("%s update the food sharing at %s pantry.", user.first_name, pantry)
+    update.message.reply_text(
+        'Got it.\n\n',
+        reply_markup=ReplyKeyboardRemove(),
+    )
+
+    ## Update the storage
+    storage[chat_id] = FoodInfo(pantry)
+
+    update.message.reply_text(
+        'Is the food perishable or non-perishable? '
+        'Send /cancel to stop the update.\n\n',
+        reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True),
+    )
+
+    return PERISHABLE_UPDATE
+
+
+def perishable_update(update: Update, context: CallbackContext) -> int:
+    user = update.message.from_user
+    chat_id = update.message.chat.id
+    perishable = update.message.text
+
+    logger.info("The food updated is %s.", perishable)
     update.message.reply_text(
         'Got it.\n\n',
         reply_markup=ReplyKeyboardRemove(),
     )
 
     # Update the storage
-    storage[chat_id] = [pantry_update]
+    food_info = storage.get(chat_id)
+    food_info.put_perishable(perishable)
+    storage[chat_id] = food_info
+    pantry = food_info.pantry[-1]
+
+    if (perishable == 'Perishable'):
+        reply_keyboard = [[pantry + '1', pantry + '2', pantry + '3', pantry + '4']]
+        update.message.reply_text(
+            'Which box did you take the food from? '
+            'Send /cancel to stop updating.\n\n',
+            reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True),
+        )
+        return BOX_UPDATE
+    else:
+        update.message.reply_text(
+            'Please send me a photo of the food you want to share. '
+            'Send /cancel to stop the update.\n\n'
+        )
+        return PHOTO_UPDATE
+
+
+def box_update(update: Update, context: CallbackContext) -> int:
+    user = update.message.from_user
+    chat_id = update.message.chat.id
+    box = update.message.text
+
+    logger.info("The food is taken from box %s.", box)
+    update.message.reply_text(
+        'Got it.\n\n',
+        reply_markup=ReplyKeyboardRemove(),
+    )
+
+    # Update the storage
+    food_info = storage.get(chat_id)
+    food_info.put_box(box)
+    storage[chat_id] = food_info
 
     update.message.reply_text(
         'Please send me a photo of the food after you have taken it. '
@@ -218,20 +334,23 @@ def pantry_update(update: Update, context: CallbackContext) -> int:
     return PHOTO_UPDATE
 
 
+
 def photo_update(update: Update, context: CallbackContext) -> int:
     user = update.message.from_user
     chat_id = update.message.chat.id
     photo_file = update.message.photo[-1].get_file()
     time = datetime.datetime.now()
     photo_name = 'update-' + str(time) + '.jpg'
-    photo_file.download(photo_name)
     update.message.reply_text(
         'A moment please...\n\n'
     )
 
-    temp_storage = storage.pop(chat_id)
+    food_info = storage.pop(chat_id)
 
-    message = '* Food update *\n' + 'Location: ' + str(temp_storage[0]) + ' pantry\n'
+    photo_file.download(photo_name)
+    message = '* Food update *\n' + 'Location: ' + str(food_info.pantry) + ' pantry\n'
+    if food_info.perishable == 'Perishable':
+        message += 'Box: ' + str(food_info.box) + '\n' 
     # context.bot.send_photo(chat_id=926113388, photo=open(photo_name, 'rb')) # send to YuFeng personal chat
     # context.bot.send_message(chat_id=926113388, message=message)
     context.bot.send_photo(chat_id=-1001477409473, photo=open(photo_name, 'rb')) # send to Try Channel
@@ -291,6 +410,7 @@ def main() -> None:
         states={
             PANTRY_START: [MessageHandler(Filters.regex('^(Block D|Block E)$'), pantry_start)],
             PERISHABLE_START: [MessageHandler(Filters.regex('^(Perishable|Non-perishable)$'), perishable_start)],
+            BOX_START: [MessageHandler(Filters.regex('^(D1|D2|D3|D4|E1|E2|E3|E4)$'), box_start)],
             PHOTO_START: [MessageHandler(Filters.photo, photo_start)],
             FEEDBACK_START: [
                 MessageHandler(Filters.text & ~Filters.command, feedback_start),
@@ -304,6 +424,8 @@ def main() -> None:
         entry_points=[CommandHandler('update', status)],
         states={
             PANTRY_UPDATE: [MessageHandler(Filters.regex('^(Block D|Block E)$'), pantry_update)],
+            PERISHABLE_UPDATE: [MessageHandler(Filters.regex('^(Perishable|Non-perishable)$'), perishable_update)],
+            BOX_UPDATE: [MessageHandler(Filters.regex('^(D1|D2|D3|D4|E1|E2|E3|E4)$'), box_update)],
             PHOTO_UPDATE: [MessageHandler(Filters.photo, photo_update)],
             FEEDBACK_UPDATE: [
                 MessageHandler(Filters.text & ~Filters.command, feedback_update),
@@ -316,12 +438,12 @@ def main() -> None:
     dispatcher.add_handler(conv_handler_start)
     dispatcher.add_handler(conv_handler_update)
 
-    # updater.start_polling()
+    updater.start_polling()
     # Start the Bot
-    updater.start_webhook(listen="0.0.0.0",
+    '''updater.start_webhook(listen="0.0.0.0",
                         port=int(PORT),
                         url_path=TOKEN)
-    updater.bot.setWebhook('https://blooming-everglades-53145.herokuapp.com/' + TOKEN)
+    updater.bot.setWebhook('https://blooming-everglades-53145.herokuapp.com/' + TOKEN)'''
 
     # Run the bot until you press Ctrl-C or the process receives SIGINT,
     # SIGTERM or SIGABRT. This should be used most of the time, since
